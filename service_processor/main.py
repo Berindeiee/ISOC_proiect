@@ -24,13 +24,17 @@ def callback(message):
     message.ack()
 
 def processor_loop():
+    # Afișează acest mesaj imediat ce pornește thread-ul
     print(f">> Processor loop starting, subscribing to {subscription_path}")
+    # O singură subscripție
     streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     try:
         streaming_pull.result()
-    except Exception:
-        print("Processor loop error:", Exception)
+    except Exception as e:
+        # Printează orice eroare în buclă
+        print("Processor loop error:", e)
         streaming_pull.cancel()
+
 
 @app.route('/')   # health-check
 def health():
