@@ -17,10 +17,19 @@ subscription_path = subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_ID)
 app = Flask(__name__)
 
 def callback(message):
-    task = json.loads(message.data.decode('utf-8'))
+    raw = message.data.decode('utf-8')
+    try:
+        task = json.loads(raw)
+    except json.JSONDecodeError:
+        # Mesaj nevalid: îl scapi fără a opri bucla
+        print(f"[WARN] Invalid JSON, dropping message: {raw}", flush=True)
+        message.ack()
+        return
+
+    # Dacă ajungi aici, ai un task valid
     result = {'task_id': task['id'], 'processed_value': task['value'] + 100}
     db.collection('results').add(result)
-    print(f"Processed and stored result: {result}")
+    print(f"Processed and stored result: {result}", flush=True)
     message.ack()
 
 def processor_loop():
