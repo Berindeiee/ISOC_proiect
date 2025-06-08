@@ -2,15 +2,15 @@ import os, threading, json
 from flask import Flask
 from google.cloud import pubsub_v1, firestore
 
-# Config din env
-PROJECT_ID     = os.getenv('PROJECT_ID')
-SUBSCRIPTION_ID= os.getenv('SUBSCRIPTION_ID')
-PORT           = int(os.getenv('PORT', '8080'))
+# Citire variabile de mediu
+PROJECT_ID      = os.getenv('PROJECT_ID')
+SUBSCRIPTION_ID = os.getenv('SUBSCRIPTION_ID')
+PORT            = int(os.getenv('PORT','8080'))
 
-# Setup Firestore
+# Conectare la Firestore
 db = firestore.Client()
 
-# Setup Pub/Sub subscriber
+# Subscrber Pub/Sub
 subscriber = pubsub_v1.SubscriberClient()
 subscription_path = subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_ID)
 
@@ -19,31 +19,40 @@ app = Flask(__name__)
 def callback(message):
     raw = message.data.decode('utf-8')
     try:
-        task = json.loads(raw)
+        order = json.loads(raw)
     except json.JSONDecodeError:
-        # Mesaj nevalid: îl scapi fără a opri bucla
-        print(f"[WARN] Invalid JSON, dropping message: {raw}", flush=True)
+        print(f"[WARN] Mesaj invalid JSON, îl ignor: {raw}", flush=True)
         message.ack()
         return
 
-    # Dacă ajungi aici, ai un task valid
-    result = {'task_id': task['id'], 'processed_value': task['value'] + 100}
-    db.collection('results').add(result)
-    print(f"Processed and stored result: {result}", flush=True)
+    # Exemplu de procesare: calculează totalul comenzii
+    total_amount = order['quantity'] * order['price']
+
+    # Construieşte documentul
+    doc = {
+        'order_id':      order['order_id'],
+        'customer_name': order['customer_name'],
+        'product':       order['product'],
+        'quantity':      order['quantity'],
+        'price':         order['price'],
+        'ordered_at':    order['ordered_at'],
+        'total_amount':  total_amount,
+        'processed_at':  firestore.SERVER_TIMESTAMP
+    }
+
+    # Scrie în Firestore în colecția `orders`
+    db.collection('orders').add(doc)
+    print(f"Processed order {order['order_id']}, total={total_amount}", flush=True)
     message.ack()
 
 def processor_loop():
-    # Afișează acest mesaj imediat ce pornește thread-ul
-    print(f">> Processor loop starting, subscribing to {subscription_path}", flush=True)
-    # O singură subscripție
+    print(f">> Pornesc processor-ul, subscribe la {subscription_path}", flush=True)
     streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     try:
         streaming_pull.result()
     except Exception as e:
-        # Printează orice eroare în buclă
-        print("Processor loop error:", e)
+        print("Eroare în processor_loop:", e, flush=True)
         streaming_pull.cancel()
-
 
 @app.route('/')   # health-check
 def health():
