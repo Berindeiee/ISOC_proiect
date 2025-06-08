@@ -25,9 +25,12 @@ def callback(message):
 
 def processor_loop():
     streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
+    print(f">> Processor loop starting, subscribing to {subscription_path}")
+    streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     try:
         streaming_pull.result()
     except Exception:
+        print("Processor loop error:", Exception)
         streaming_pull.cancel()
 
 @app.route('/')   # health-check
