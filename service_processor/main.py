@@ -25,7 +25,7 @@ def callback(message):
 
 def processor_loop():
     # Afișează acest mesaj imediat ce pornește thread-ul
-    print(f">> Processor loop starting, subscribing to {subscription_path}")
+    print(f">> Processor loop starting, subscribing to {subscription_path}", flush=True)
     # O singură subscripție
     streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     try:
