@@ -24,7 +24,6 @@ def callback(message):
     message.ack()
 
 def processor_loop():
-    streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     print(f">> Processor loop starting, subscribing to {subscription_path}")
     streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
     try:
